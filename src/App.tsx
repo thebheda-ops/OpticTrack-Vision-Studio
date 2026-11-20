@@ -6,12 +6,15 @@ import {
   Camera,
   CameraOff,
   Download,
+  FileText,
   FileVideo,
   Hand,
   Pause,
   Play,
   RotateCcw,
   SlidersHorizontal,
+  Terminal,
+  X,
 } from 'lucide-react';
 import { DetectionLogView } from './components/DetectionLogView';
 import { FpsTelemetryChart } from './components/FpsTelemetryChart';
@@ -65,6 +68,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('monitor');
   const [settings, setSettings] = useState<DetectorSettings>(DEFAULT_SETTINGS);
   const [sourceMode, setSourceMode] = useState<StreamSourceMode>('camera');
+  const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
 
   // Model & backend state
   const [objectModelState, setObjectModelState] = useState<ModelLoadState>('idle');
@@ -966,20 +970,20 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#090C10] text-slate-100 flex flex-col">
-      {/* Top Bar Contract: Brand Wordmark — 3 Nav Links — 1 Primary Action */}
-      <header className="border-b border-slate-800 bg-[#0C1016] px-6 h-16 flex items-center justify-between gap-8 sticky top-0 z-30">
+      {/* Top Bar Contract: Brand Wordmark — Nav Links (Desktop) — 1 Primary Action */}
+      <header className="border-b border-slate-800 bg-[#0C1016] px-4 md:px-6 h-14 md:h-16 flex items-center justify-between gap-4 md:gap-8 md:sticky md:top-0 z-30">
         <a
           href="#monitor"
           onClick={(e) => {
             e.preventDefault();
             setActiveTab('monitor');
           }}
-          className="text-lg font-bold tracking-tight text-slate-100 whitespace-nowrap shrink-0"
+          className="text-base sm:text-lg font-bold tracking-tight text-slate-100 whitespace-nowrap shrink-0"
         >
           OpticTrack Studio
         </a>
 
-        <nav className="flex items-center gap-6 text-sm font-medium">
+        <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
           <button
             type="button"
             onClick={() => setActiveTab('monitor')}
@@ -1023,9 +1027,9 @@ export default function App() {
             <button
               type="button"
               onClick={stopStream}
-              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-slate-100 bg-rose-600 hover:bg-rose-500 rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 min-h-[40px] md:min-h-0 px-4 py-2 text-sm md:text-xs font-semibold text-slate-100 bg-rose-600 hover:bg-rose-500 active:scale-[0.98] rounded-md transition-all whitespace-nowrap shrink-0 cursor-pointer"
             >
-              <CameraOff className="w-3.5 h-3.5" />
+              <CameraOff className="w-4 h-4 md:w-3.5 md:h-3.5" />
               Stop Stream
             </button>
           ) : (
@@ -1036,9 +1040,9 @@ export default function App() {
                 startCamera();
               }}
               disabled={anyModelLoading}
-              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-slate-950 bg-cyan-400 hover:bg-cyan-300 rounded-md transition-colors whitespace-nowrap shrink-0 disabled:opacity-50 cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 min-h-[40px] md:min-h-0 px-4 py-2 text-sm md:text-xs font-semibold text-slate-950 bg-cyan-400 hover:bg-cyan-300 active:scale-[0.98] rounded-md transition-all whitespace-nowrap shrink-0 disabled:opacity-50 cursor-pointer"
             >
-              <Camera className="w-3.5 h-3.5" />
+              <Camera className="w-4 h-4 md:w-3.5 md:h-3.5" />
               Start Camera
             </button>
           )}
@@ -1046,11 +1050,11 @@ export default function App() {
       </header>
 
       {/* Main Content Container */}
-      <main className="flex-1 w-full max-w-[1440px] mx-auto px-6 py-5">
+      <main className="flex-1 w-full max-w-[1440px] mx-auto px-3 sm:px-6 pt-3 pb-20 sm:py-5 md:pb-6">
         {activeTab === 'monitor' && (
           <div className="flex flex-col lg:flex-row gap-5 items-start">
-            {/* Left Control & Parameter Column */}
-            <aside className="w-full lg:w-[320px] shrink-0 bg-[#10151C] border border-slate-800 rounded-lg divide-y divide-slate-800">
+            {/* Desktop Control & Parameter Dashboard (Hidden on mobile screens) */}
+            <aside className="hidden lg:block w-[320px] shrink-0 bg-[#10151C] border border-slate-800 rounded-lg divide-y divide-slate-800">
               <div className="p-4 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <SlidersHorizontal className="w-4 h-4 text-cyan-400" />
@@ -1405,10 +1409,10 @@ export default function App() {
               </div>
             </aside>
 
-            {/* Right Main Viewport & Performance Monitoring Stage */}
-            <section className="flex-1 min-w-0 w-full space-y-4">
-              {/* Prominent Performance Monitoring Strip */}
-              <div className="grid grid-cols-2 md:grid-cols-5 bg-[#10151C] border border-slate-800 rounded-lg divide-y md:divide-y-0 md:divide-x divide-slate-800">
+            {/* Right Main Viewport & Desktop Performance Monitoring Stage */}
+            <section className="flex-1 min-w-0 w-full space-y-3 sm:space-y-4">
+              {/* Desktop 5-Metric KPI Dashboard Strip (Hidden on mobile screens) */}
+              <div className="hidden lg:grid grid-cols-5 bg-[#10151C] border border-slate-800 rounded-lg divide-x divide-slate-800">
                 <div className="p-4">
                   <div className="text-xs text-slate-400">Frame Rate</div>
                   <div className="mt-1 flex items-baseline gap-1.5">
@@ -1471,9 +1475,9 @@ export default function App() {
               </div>
 
               {/* Video Feed + Real-Time Bounding Box & Hand Skeleton Canvas */}
-              <div className="bg-[#10151C] border border-slate-800 rounded-lg overflow-hidden">
-                <div className="px-4 py-2.5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 text-xs text-slate-300">
+              <div className="bg-[#10151C] border border-slate-800 rounded-xl lg:rounded-lg overflow-hidden">
+                <div className="px-3.5 sm:px-4 py-2.5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2.5">
+                  <div className="flex flex-wrap items-center gap-2 text-[13px] sm:text-xs text-slate-300">
                     <span
                       className={`font-mono ${
                         isStreaming
@@ -1493,8 +1497,16 @@ export default function App() {
                     <span className="font-mono tabular-nums text-slate-400">
                       {resolution.w > 0
                         ? `${resolution.w} × ${resolution.h}`
-                        : '960 × 540 target'}
+                        : 'Auto Resolution'}
                     </span>
+                    {isStreaming && (
+                      <>
+                        <span className="text-slate-600 lg:hidden" aria-hidden="true">·</span>
+                        <span className="font-mono tabular-nums text-emerald-400 lg:hidden">
+                          {fps.toFixed(1)} FPS
+                        </span>
+                      </>
+                    )}
                   </div>
 
                   {isStreaming && (
@@ -1502,16 +1514,16 @@ export default function App() {
                       <button
                         type="button"
                         onClick={togglePause}
-                        className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-slate-200 bg-[#161D27] hover:bg-slate-800 border border-slate-700 rounded transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                        className="inline-flex items-center justify-center gap-1.5 min-h-[40px] lg:min-h-0 px-3.5 py-2 lg:px-3 lg:py-1 text-xs font-medium text-slate-200 bg-[#161D27] hover:bg-slate-800 active:scale-[0.98] border border-slate-700 rounded-md lg:rounded transition-all whitespace-nowrap shrink-0 cursor-pointer"
                       >
                         {isPaused ? (
                           <>
-                            <Play className="w-3 h-3 text-emerald-400" />
+                            <Play className="w-3.5 h-3.5 lg:w-3 lg:h-3 text-emerald-400" />
                             Resume
                           </>
                         ) : (
                           <>
-                            <Pause className="w-3 h-3 text-amber-400" />
+                            <Pause className="w-3.5 h-3.5 lg:w-3 lg:h-3 text-amber-400" />
                             Pause
                           </>
                         )}
@@ -1523,17 +1535,17 @@ export default function App() {
                             ? startCamera()
                             : fileInputRef.current?.click()
                         }
-                        className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-slate-300 hover:text-slate-100 bg-[#161D27] hover:bg-slate-800 border border-slate-700 rounded transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                        className="inline-flex items-center justify-center gap-1.5 min-h-[40px] lg:min-h-0 px-3.5 py-2 lg:px-3 lg:py-1 text-xs font-medium text-slate-300 hover:text-slate-100 bg-[#161D27] hover:bg-slate-800 active:scale-[0.98] border border-slate-700 rounded-md lg:rounded transition-all whitespace-nowrap shrink-0 cursor-pointer"
                       >
-                        <RotateCcw className="w-3 h-3" />
+                        <RotateCcw className="w-3.5 h-3.5 lg:w-3 lg:h-3" />
                         Restart
                       </button>
                     </div>
                   )}
                 </div>
 
-                {/* 16:9 Stage */}
-                <div className="relative w-full aspect-video bg-[#05070A] flex items-center justify-center overflow-hidden">
+                {/* Responsive Screening Viewport: portrait-friendly on mobile, 16:9 on desktop */}
+                <div className="relative w-full aspect-[3/4] sm:aspect-video min-h-[340px] max-h-[66dvh] lg:max-h-none bg-[#05070A] flex items-center justify-center overflow-hidden">
                   <video
                     ref={videoRef}
                     playsInline
@@ -1552,36 +1564,36 @@ export default function App() {
                   />
 
                   {!isStreaming && (
-                    <div className="px-6 py-10 text-center max-w-lg">
-                      <Camera className="w-10 h-10 text-slate-600 mx-auto mb-3" />
-                      <h3 className="text-base font-semibold text-slate-100">
-                        Connect Laptop Camera or Video Stream
+                    <div className="px-5 sm:px-6 py-8 sm:py-10 text-center max-w-md sm:max-w-lg">
+                      <Camera className="w-11 h-11 sm:w-10 sm:h-10 text-slate-600 mx-auto mb-3.5" />
+                      <h3 className="text-lg sm:text-base font-semibold text-slate-100 text-balance leading-snug">
+                        Connect Camera or Video Stream
                       </h3>
-                      <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+                      <p className="text-sm sm:text-xs text-slate-400 mt-2 leading-relaxed">
                         {modelError
                           ? modelError
                           : streamError
                             ? streamError
-                            : 'Start your laptop webcam for real-time object recognition, 21-point hand movement tracking, gesture recognition, FPS monitoring, and timestamp logging.'}
+                            : 'Start your camera for real-time object recognition, 360° hand & finger tracking, gesture classification, and timestamp logging.'}
                       </p>
 
-                      <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+                      <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
                         <button
                           type="button"
                           onClick={() => startCamera()}
                           disabled={anyModelLoading}
-                          className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-slate-950 bg-cyan-400 hover:bg-cyan-300 rounded-md transition-colors whitespace-nowrap shrink-0 disabled:opacity-50 cursor-pointer"
+                          className="inline-flex items-center justify-center gap-2 min-h-[44px] px-5 py-2.5 text-sm sm:text-xs font-semibold text-slate-950 bg-cyan-400 hover:bg-cyan-300 active:scale-[0.98] rounded-lg sm:rounded-md transition-all whitespace-nowrap shrink-0 disabled:opacity-50 cursor-pointer"
                         >
                           <Camera className="w-4 h-4" />
                           {anyModelLoading
                             ? 'Loading Vision Models...'
-                            : 'Start Laptop Camera'}
+                            : 'Start Camera'}
                         </button>
                         <button
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
                           disabled={anyModelLoading}
-                          className="inline-flex items-center gap-2 px-4 py-2 text-xs font-medium text-slate-200 bg-[#161D27] hover:bg-slate-800 border border-slate-700 rounded-md transition-colors whitespace-nowrap shrink-0 disabled:opacity-50 cursor-pointer"
+                          className="inline-flex items-center justify-center gap-2 min-h-[44px] px-5 py-2.5 text-sm sm:text-xs font-medium text-slate-200 bg-[#161D27] hover:bg-slate-800 active:scale-[0.98] border border-slate-700 rounded-lg sm:rounded-md transition-all whitespace-nowrap shrink-0 disabled:opacity-50 cursor-pointer"
                         >
                           <FileVideo className="w-4 h-4 text-cyan-400" />
                           Upload Video File
@@ -1591,9 +1603,64 @@ export default function App() {
                   )}
                 </div>
 
-                {/* Clean Unboxed Active Labels & Hand Gesture Telemetry Bar */}
-                <div className="px-4 py-3 border-t border-slate-800 bg-[#0C1016] space-y-2 text-xs">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
+                {/* Mobile Quick Screening Controls (Touch-friendly buttons without full dashboard clutter) */}
+                <div className="lg:hidden px-3.5 py-3 border-t border-slate-800 bg-[#0E131A] space-y-2.5">
+                  <div className="grid grid-cols-3 gap-1.5 p-1 bg-[#090C10] border border-slate-800 rounded-lg">
+                    {(
+                      [
+                        ['all', 'Combined'],
+                        ['hands', 'Hands Only'],
+                        ['objects', 'Objects'],
+                      ] as Array<[DetectionMode, string]>
+                    ).map(([mode, label]) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() =>
+                          setSettings((prev) => ({ ...prev, detectionMode: mode }))
+                        }
+                        className={`min-h-[44px] px-2 text-[13px] font-medium rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                          settings.detectionMode === mode
+                            ? 'bg-slate-800 text-cyan-300'
+                            : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-3 text-[13px] font-medium text-slate-200 bg-[#161D27] hover:bg-slate-800 active:scale-[0.98] border border-slate-700 rounded-lg transition-all whitespace-nowrap shrink-0 cursor-pointer"
+                    >
+                      <FileVideo className="w-4 h-4 text-cyan-400 shrink-0" />
+                      Video
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveSnapshot}
+                      disabled={!isStreaming}
+                      className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-3 text-[13px] font-medium text-slate-200 bg-[#161D27] hover:bg-slate-800 active:scale-[0.98] border border-slate-700 rounded-lg transition-all whitespace-nowrap shrink-0 disabled:opacity-40 cursor-pointer"
+                    >
+                      Save Frame
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMobileControlsOpen(true)}
+                      className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-3 text-[13px] font-medium text-slate-200 bg-[#161D27] hover:bg-slate-800 active:scale-[0.98] border border-slate-700 rounded-lg transition-all whitespace-nowrap shrink-0 cursor-pointer"
+                    >
+                      <SlidersHorizontal className="w-4 h-4 text-cyan-400 shrink-0" />
+                      Controls
+                    </button>
+                  </div>
+                </div>
+
+                {/* Clean Unboxed Active Labels & 360° Hand/Finger Telemetry Bar */}
+                <div className="px-3.5 sm:px-4 py-3 border-t border-slate-800 bg-[#0C1016] space-y-2.5 text-[13px] sm:text-xs leading-relaxed">
+                  <div className="flex flex-wrap items-center justify-between gap-2.5">
                     <div className="flex flex-wrap items-center gap-2 text-slate-300">
                       <span className="text-slate-500">Active Objects:</span>
                       {groupedDetections.length === 0 ? (
@@ -1628,7 +1695,7 @@ export default function App() {
                         ))
                       )}
                     </div>
-                    <div className="text-slate-400 font-mono text-xs">
+                    <div className="hidden sm:block text-slate-400 font-mono text-xs">
                       {settings.loggingEnabled
                         ? `Logging -> ${logFilePath}`
                         : 'Logging Paused'}
@@ -1637,9 +1704,9 @@ export default function App() {
 
                   {/* Real-Time 360° Hand & Per-Finger Articulation Telemetry */}
                   <div className="pt-2 border-t border-slate-800/70 space-y-2 text-slate-300">
-                    <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
                       <span className="inline-flex items-center gap-1.5 text-slate-500">
-                        <Hand className="w-3.5 h-3.5 text-emerald-400" />
+                        <Hand className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                         360° Hand & Finger Tracking:
                       </span>
                       {trackedHands.length === 0 ? (
@@ -1647,7 +1714,7 @@ export default function App() {
                           {isStreaming
                             ? settings.detectionMode === 'objects'
                               ? 'Disabled in Objects Only mode'
-                              : 'Show hand at any angle (360° rotation, palm front/back, individual finger curls)'
+                              : 'Show hand at any angle (360° rotation, palm front/back, individual fingers)'
                             : 'Waiting for stream'}
                         </span>
                       ) : (
@@ -1683,7 +1750,7 @@ export default function App() {
                         {trackedHands.map((hand) => (
                           <div
                             key={`${hand.id}-fingers`}
-                            className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-mono tabular-nums text-slate-400"
+                            className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-[13px] sm:text-xs font-mono tabular-nums text-slate-400"
                           >
                             <span className="font-sans text-slate-500">
                               {hand.handedness} Fingers:
@@ -1728,8 +1795,8 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Bottom Telemetry Row: FPS Chart + Live Log Tail */}
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              {/* Desktop Bottom Telemetry Dashboard Row (Hidden on mobile screens) */}
+              <div className="hidden lg:grid grid-cols-2 gap-4">
                 <FpsTelemetryChart samples={perfSamples} />
 
                 <div className="bg-[#10151C] border border-slate-800 rounded-lg p-4 flex flex-col">
@@ -1812,6 +1879,221 @@ export default function App() {
 
         {activeTab === 'python' && <PythonOpenCvView settings={settings} />}
       </main>
+
+      {/* Mobile Bottom Sheet for On-Demand Controls (keeps dashboard hidden by default) */}
+      {mobileControlsOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-end"
+          onClick={() => setMobileControlsOpen(false)}
+        >
+          <div
+            className="w-full max-h-[82dvh] bg-[#10151C] border-t border-slate-700 rounded-t-3xl flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="pt-3 pb-2 px-5 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="w-4 h-4 text-cyan-400" />
+                <h3 className="text-base font-semibold text-slate-100">
+                  Screening Controls
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileControlsOpen(false)}
+                aria-label="Close controls"
+                className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-slate-400 hover:text-slate-100 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto p-5 space-y-5 text-sm">
+              {cameras.length > 0 && (
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="mobile-camera-select"
+                    className="block text-sm font-medium text-slate-200"
+                  >
+                    Camera Device
+                  </label>
+                  <select
+                    id="mobile-camera-select"
+                    value={selectedCameraId}
+                    onChange={(e) => {
+                      const nextId = e.target.value;
+                      setSelectedCameraId(nextId);
+                      if (isStreaming) startCamera(nextId);
+                    }}
+                    className="w-full min-h-[44px] px-3 py-2.5 text-sm bg-[#090C10] border border-slate-800 rounded-lg text-slate-100 focus:outline-none focus:border-cyan-500"
+                  >
+                    {cameras.map((cam, idx) => (
+                      <option key={cam.deviceId || idx} value={cam.deviceId}>
+                        {cam.label || `Camera ${idx + 1}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span className="font-medium text-slate-200">
+                    Confidence Threshold
+                  </span>
+                  <span className="font-mono tabular-nums text-cyan-400">
+                    {(settings.confidenceThreshold * 100).toFixed(0)}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0.2}
+                  max={0.9}
+                  step={0.05}
+                  value={settings.confidenceThreshold}
+                  onChange={(e) =>
+                    setSettings((prev) => ({
+                      ...prev,
+                      confidenceThreshold: parseFloat(e.target.value),
+                    }))
+                  }
+                  className="w-full h-10 accent-cyan-400 cursor-pointer"
+                />
+              </div>
+
+              <div className="space-y-1 divide-y divide-slate-800/70">
+                <label className="flex items-center justify-between min-h-[48px] text-sm text-slate-200 cursor-pointer">
+                  <span>21-Point Hand Skeleton</span>
+                  <input
+                    type="checkbox"
+                    checked={settings.showHandSkeleton}
+                    onChange={(e) =>
+                      setSettings((prev) => ({
+                        ...prev,
+                        showHandSkeleton: e.target.checked,
+                      }))
+                    }
+                    className="accent-cyan-400 w-5 h-5 rounded cursor-pointer"
+                  />
+                </label>
+                <label className="flex items-center justify-between min-h-[48px] text-sm text-slate-200 cursor-pointer">
+                  <span>360° Orientation Dial</span>
+                  <input
+                    type="checkbox"
+                    checked={settings.showOrientationDial}
+                    onChange={(e) =>
+                      setSettings((prev) => ({
+                        ...prev,
+                        showOrientationDial: e.target.checked,
+                      }))
+                    }
+                    className="accent-cyan-400 w-5 h-5 rounded cursor-pointer"
+                  />
+                </label>
+                <label className="flex items-center justify-between min-h-[48px] text-sm text-slate-200 cursor-pointer">
+                  <span>Show FPS HUD on Video</span>
+                  <input
+                    type="checkbox"
+                    checked={settings.showFpsOnCanvas}
+                    onChange={(e) =>
+                      setSettings((prev) => ({
+                        ...prev,
+                        showFpsOnCanvas: e.target.checked,
+                      }))
+                    }
+                    className="accent-cyan-400 w-5 h-5 rounded cursor-pointer"
+                  />
+                </label>
+                <label className="flex items-center justify-between min-h-[48px] text-sm text-slate-200 cursor-pointer">
+                  <span>Mirror Front Camera</span>
+                  <input
+                    type="checkbox"
+                    checked={settings.mirrorCamera}
+                    onChange={(e) =>
+                      setSettings((prev) => ({
+                        ...prev,
+                        mirrorCamera: e.target.checked,
+                      }))
+                    }
+                    className="accent-cyan-400 w-5 h-5 rounded cursor-pointer"
+                  />
+                </label>
+                <label className="flex items-center justify-between min-h-[48px] text-sm text-slate-200 cursor-pointer">
+                  <span>Log Timestamps to .txt</span>
+                  <input
+                    type="checkbox"
+                    checked={settings.loggingEnabled}
+                    onChange={(e) =>
+                      setSettings((prev) => ({
+                        ...prev,
+                        loggingEnabled: e.target.checked,
+                      }))
+                    }
+                    className="accent-cyan-400 w-5 h-5 rounded cursor-pointer"
+                  />
+                </label>
+              </div>
+
+              <div className="pt-2 grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={handleDownloadLogs}
+                  className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2.5 text-sm font-medium text-slate-200 bg-[#161D27] hover:bg-slate-800 border border-slate-700 rounded-lg cursor-pointer"
+                >
+                  <Download className="w-4 h-4" />
+                  Export .txt
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMobileControlsOpen(false)}
+                  className="inline-flex items-center justify-center min-h-[44px] px-4 py-2.5 text-sm font-semibold text-slate-950 bg-cyan-400 hover:bg-cyan-300 rounded-lg cursor-pointer"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Bottom Thumb-Zone Navigation Bar (<= 15% sticky height cap) */}
+      <nav
+        aria-label="Mobile navigation"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 h-14 bg-[#0C1016]/95 backdrop-blur-md border-t border-slate-800 grid grid-cols-3 items-center"
+      >
+        <button
+          type="button"
+          onClick={() => setActiveTab('monitor')}
+          className={`flex flex-col items-center justify-center min-h-[44px] gap-0.5 text-[11px] font-medium transition-colors cursor-pointer ${
+            activeTab === 'monitor' ? 'text-cyan-400' : 'text-slate-400'
+          }`}
+        >
+          <Camera className="w-5 h-5" />
+          <span>Monitor</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('logs');
+            fetchLogs();
+          }}
+          className={`flex flex-col items-center justify-center min-h-[44px] gap-0.5 text-[11px] font-medium transition-colors cursor-pointer ${
+            activeTab === 'logs' ? 'text-cyan-400' : 'text-slate-400'
+          }`}
+        >
+          <FileText className="w-5 h-5" />
+          <span>Logs</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('python')}
+          className={`flex flex-col items-center justify-center min-h-[44px] gap-0.5 text-[11px] font-medium transition-colors cursor-pointer ${
+            activeTab === 'python' ? 'text-cyan-400' : 'text-slate-400'
+          }`}
+        >
+          <Terminal className="w-5 h-5" />
+          <span>OpenCV</span>
+        </button>
+      </nav>
     </div>
   );
 }

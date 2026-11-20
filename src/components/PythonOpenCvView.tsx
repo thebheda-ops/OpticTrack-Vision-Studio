@@ -76,42 +76,42 @@ export const PythonOpenCvView: React.FC<PythonOpenCvViewProps> = ({ settings }) 
   return (
     <div className="space-y-4">
       {/* Synced CLI Launcher Card */}
-      <div className="bg-[#10151C] border border-slate-800 rounded-lg p-5">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <div className="bg-[#10151C] border border-slate-800 rounded-xl sm:rounded-lg p-4 sm:p-5">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-4">
           <div>
-            <h2 className="text-lg font-semibold text-slate-100">
+            <h2 className="text-base sm:text-lg font-semibold text-slate-100 text-balance">
               Python OpenCV Desktop Pipeline
             </h2>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-[13px] sm:text-xs text-slate-400 mt-1.5 leading-relaxed">
               Run the native Python + <code className="font-mono text-slate-300">cv2.dnn</code> detector locally with your laptop webcam, synchronized with your current confidence and cooldown parameters.
             </p>
           </div>
-          <div className="flex items-center gap-2 text-xs text-slate-400 shrink-0">
+          <div className="flex items-center gap-2 text-[13px] sm:text-xs text-slate-400 shrink-0">
             <span>Architecture:</span>
             <span className="font-mono text-cyan-400">{settings.pythonModel}</span>
           </div>
         </div>
 
         <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-3">
-          <div className="bg-[#090C10] border border-slate-800 rounded-md p-3">
-            <div className="text-xs font-medium text-slate-300 mb-1.5">
+          <div className="bg-[#090C10] border border-slate-800 rounded-lg sm:rounded-md p-3.5 sm:p-3">
+            <div className="text-[13px] sm:text-xs font-medium text-slate-300 mb-1.5">
               1. Install OpenCV Dependencies
             </div>
-            <code className="block text-xs font-mono text-slate-400">
+            <code className="block text-xs font-mono text-slate-400 overflow-x-auto whitespace-nowrap">
               pip install -r requirements-desktop.txt
             </code>
           </div>
-          <div className="bg-[#090C10] border border-slate-800 rounded-md p-3">
-            <div className="text-xs font-medium text-slate-300 mb-1.5">
+          <div className="bg-[#090C10] border border-slate-800 rounded-lg sm:rounded-md p-3.5 sm:p-3">
+            <div className="text-[13px] sm:text-xs font-medium text-slate-300 mb-1.5">
               2. Download Pre-Trained Weights
             </div>
-            <code className="block text-xs font-mono text-slate-400">
+            <code className="block text-xs font-mono text-slate-400 overflow-x-auto whitespace-nowrap">
               python setup_models.py --model {settings.pythonModel}
             </code>
           </div>
-          <div className="bg-[#090C10] border border-slate-800 rounded-md p-3 flex items-center justify-between gap-3">
+          <div className="bg-[#090C10] border border-slate-800 rounded-lg sm:rounded-md p-3.5 sm:p-3 flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <div className="text-xs font-medium text-slate-300 mb-1.5 flex items-center gap-1.5">
+              <div className="text-[13px] sm:text-xs font-medium text-slate-300 mb-1.5 flex items-center gap-1.5">
                 <Terminal className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                 <span>3. Launch Live Detector</span>
               </div>
@@ -122,7 +122,7 @@ export const PythonOpenCvView: React.FC<PythonOpenCvViewProps> = ({ settings }) 
             <button
               type="button"
               onClick={() => handleCopy('cli', cliCommand)}
-              className="px-2.5 py-1.5 text-xs font-medium text-slate-200 bg-[#161D27] hover:bg-slate-800 border border-slate-700 rounded transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              className="min-h-[44px] sm:min-h-0 px-3.5 py-2 sm:px-2.5 sm:py-1.5 text-xs font-medium text-slate-200 bg-[#161D27] hover:bg-slate-800 active:scale-[0.98] border border-slate-700 rounded-lg sm:rounded transition-all whitespace-nowrap shrink-0 cursor-pointer"
             >
               {copiedId === 'cli' ? 'Copied' : 'Copy'}
             </button>
@@ -131,15 +131,15 @@ export const PythonOpenCvView: React.FC<PythonOpenCvViewProps> = ({ settings }) 
       </div>
 
       {/* Source File Viewer */}
-      <div className="bg-[#10151C] border border-slate-800 rounded-lg overflow-hidden">
-        <div className="px-4 py-3 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-1 p-0.5 bg-[#090C10] border border-slate-800 rounded-md">
+      <div className="bg-[#10151C] border border-slate-800 rounded-xl sm:rounded-lg overflow-hidden">
+        <div className="px-3.5 sm:px-4 py-3 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-1 p-1 sm:p-0.5 bg-[#090C10] border border-slate-800 rounded-lg sm:rounded-md overflow-x-auto">
             {PYTHON_FILES.map((file) => (
               <button
                 key={file.key}
                 type="button"
                 onClick={() => setActiveFile(file.key)}
-                className={`px-3 py-1.5 text-xs font-mono rounded transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                className={`min-h-[40px] sm:min-h-0 px-3 py-2 sm:py-1.5 text-xs font-mono rounded-md sm:rounded transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                   activeFile === file.key
                     ? 'bg-slate-800 text-cyan-300'
                     : 'text-slate-400 hover:text-slate-200'
@@ -155,16 +155,16 @@ export const PythonOpenCvView: React.FC<PythonOpenCvViewProps> = ({ settings }) 
               type="button"
               onClick={() => handleCopy(activeFile, activeText)}
               disabled={!activeText}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-200 bg-[#161D27] hover:bg-slate-800 border border-slate-700 rounded-md transition-colors whitespace-nowrap shrink-0 disabled:opacity-40 cursor-pointer"
+              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 min-h-[44px] sm:min-h-0 px-3.5 py-2 sm:px-3 sm:py-1.5 text-[13px] sm:text-xs font-medium text-slate-200 bg-[#161D27] hover:bg-slate-800 active:scale-[0.98] border border-slate-700 rounded-lg sm:rounded-md transition-all whitespace-nowrap shrink-0 disabled:opacity-40 cursor-pointer"
             >
               {copiedId === activeFile ? (
                 <>
-                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <Check className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-emerald-400" />
                   Copied
                 </>
               ) : (
                 <>
-                  <Copy className="w-3.5 h-3.5" />
+                  <Copy className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
                   Copy Source
                 </>
               )}
@@ -173,10 +173,10 @@ export const PythonOpenCvView: React.FC<PythonOpenCvViewProps> = ({ settings }) 
               type="button"
               onClick={() => handleDownload(activeFile, activeText)}
               disabled={!activeText}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-950 bg-cyan-400 hover:bg-cyan-300 rounded-md transition-colors whitespace-nowrap shrink-0 disabled:opacity-40 cursor-pointer"
+              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 min-h-[44px] sm:min-h-0 px-3.5 py-2 sm:px-3 sm:py-1.5 text-[13px] sm:text-xs font-medium text-slate-950 bg-cyan-400 hover:bg-cyan-300 active:scale-[0.98] rounded-lg sm:rounded-md transition-all whitespace-nowrap shrink-0 disabled:opacity-40 cursor-pointer"
             >
-              <Download className="w-3.5 h-3.5" />
-              Download {activeFile}
+              <Download className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+              Download
             </button>
           </div>
         </div>

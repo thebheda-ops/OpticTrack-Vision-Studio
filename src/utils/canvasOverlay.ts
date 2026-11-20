@@ -50,9 +50,10 @@ export function renderDetectionOverlay(
 ): void {
   ctx.clearRect(0, 0, width, height);
 
-  const scaleFactor = Math.max(1, Math.min(width / 960, 1.4));
-  const lineW = Math.round(2 * scaleFactor);
-  const fontSize = Math.round(13 * scaleFactor);
+  const minDim = Math.min(width, height);
+  const scaleFactor = Math.max(0.72, Math.min(minDim / 600, 1.35));
+  const lineW = Math.max(1.5, Math.round(2 * scaleFactor));
+  const fontSize = Math.max(11, Math.round(13 * scaleFactor));
   ctx.font = `600 ${fontSize}px "JetBrains Mono", monospace`;
   ctx.textBaseline = 'top';
 
@@ -87,7 +88,7 @@ export function renderDetectionOverlay(
     const metrics = ctx.measureText(labelText);
     const padX = 7 * scaleFactor;
     const tagH = fontSize + 8 * scaleFactor;
-    const tagW = metrics.width + padX * 2;
+    const tagW = Math.min(width - 4, metrics.width + padX * 2);
     const tagY = y >= tagH + 2 ? y - tagH : y;
     const tagX = Math.max(0, Math.min(x, width - tagW));
 
@@ -95,7 +96,7 @@ export function renderDetectionOverlay(
     ctx.fillRect(tagX, tagY, tagW, tagH);
 
     ctx.fillStyle = '#090C10';
-    ctx.fillText(labelText, tagX + padX, tagY + 4 * scaleFactor);
+    ctx.fillText(labelText, tagX + padX, tagY + 4 * scaleFactor, tagW - padX * 2);
   }
 
   // 2. Render 360-degree articulated 21-point hand skeleton & individual finger states
@@ -212,13 +213,16 @@ export function renderDetectionOverlay(
     ctx.setLineDash([]);
 
     const activeGesture = hand.swipeGesture ?? hand.gesture;
-    const handLabel = `${hand.handedness} · ${activeGesture} · ${hand.orientation.rollDeg}° · ${hand.orientation.facing}`;
+    const handLabel =
+      width < 540
+        ? `${hand.handedness[0]} · ${activeGesture} · ${hand.orientation.rollDeg}°`
+        : `${hand.handedness} · ${activeGesture} · ${hand.orientation.rollDeg}° · ${hand.orientation.facing}`;
 
     ctx.font = `600 ${fontSize}px "JetBrains Mono", monospace`;
     const metrics = ctx.measureText(handLabel);
-    const padX = 8 * scaleFactor;
+    const padX = 7 * scaleFactor;
     const tagH = fontSize + 8 * scaleFactor;
-    const tagW = metrics.width + padX * 2;
+    const tagW = Math.min(width - 4, metrics.width + padX * 2);
     const tagY = by >= tagH + 2 ? by - tagH : by;
     const tagX = Math.max(0, Math.min(bx, width - tagW));
 
@@ -226,14 +230,14 @@ export function renderDetectionOverlay(
     ctx.fillRect(tagX, tagY, tagW, tagH);
 
     ctx.fillStyle = '#090C10';
-    ctx.fillText(handLabel, tagX + padX, tagY + 4 * scaleFactor);
+    ctx.fillText(handLabel, tagX + padX, tagY + 4 * scaleFactor, tagW - padX * 2);
   }
 
   // 3. Optional OpenCV-style on-frame FPS & telemetry HUD
   if (options.showFpsHud) {
-    const hudPad = 12 * scaleFactor;
-    const hudW = 320 * scaleFactor;
-    const hudH = 62 * scaleFactor;
+    const hudPad = Math.max(8, 12 * scaleFactor);
+    const hudW = Math.min(width - hudPad * 2, 310 * scaleFactor);
+    const hudH = Math.max(46, 58 * scaleFactor);
 
     ctx.fillStyle = 'rgba(9, 12, 16, 0.82)';
     ctx.fillRect(hudPad, hudPad, hudW, hudH);
@@ -241,22 +245,24 @@ export function renderDetectionOverlay(
     ctx.lineWidth = 1;
     ctx.strokeRect(hudPad, hudPad, hudW, hudH);
 
-    const fpsFontSize = Math.round(14 * scaleFactor);
+    const fpsFontSize = Math.max(11, Math.round(13.5 * scaleFactor));
     ctx.font = `600 ${fpsFontSize}px "JetBrains Mono", monospace`;
     ctx.fillStyle = options.fps >= 20 ? '#10B981' : '#F59E0B';
     ctx.fillText(
-      `FPS: ${options.fps.toFixed(1)}  |  INFER: ${options.inferenceMs.toFixed(1)} ms`,
-      hudPad + 12 * scaleFactor,
-      hudPad + 11 * scaleFactor
+      `FPS: ${options.fps.toFixed(1)}  |  ${options.inferenceMs.toFixed(1)} ms`,
+      hudPad + 10 * scaleFactor,
+      hudPad + 9 * scaleFactor,
+      hudW - 20 * scaleFactor
     );
 
-    const subFontSize = Math.round(11 * scaleFactor);
+    const subFontSize = Math.max(10, Math.round(11 * scaleFactor));
     ctx.font = `500 ${subFontSize}px "JetBrains Mono", monospace`;
     ctx.fillStyle = '#CBD5E1';
     ctx.fillText(
-      `OBJ: ${detections.length}  |  HANDS: ${hands.length}  |  LOG: ${options.loggingEnabled ? 'ACTIVE' : 'PAUSED'}`,
-      hudPad + 12 * scaleFactor,
-      hudPad + 36 * scaleFactor
+      `OBJ: ${detections.length}  |  HANDS: ${hands.length}  |  LOG: ${options.loggingEnabled ? 'ON' : 'OFF'}`,
+      hudPad + 10 * scaleFactor,
+      hudPad + 32 * scaleFactor,
+      hudW - 20 * scaleFactor
     );
   }
 }
