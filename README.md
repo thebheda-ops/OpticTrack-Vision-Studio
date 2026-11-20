@@ -1,11 +1,26 @@
-<div align="center">
+# OpticTrack Vision Studio
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+Real-time **object detection**, **21-point hand movement tracking**, and **hand gesture recognition** workbench featuring:
 
-  <h1>Built with AI Studio</h2>
+- **Live Browser Studio** (React + TypeScript + TensorFlow.js COCO-SSD + MediaPipe GestureRecognizer)
+- **Python + OpenCV + MediaPipe Desktop Pipeline** (`python/object_detector.py`)
+- **Performance & FPS Telemetry** with real-time sparkline monitoring
+- **Timestamped Local Text Logging** (`logs/detections.txt`)
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+## Web Studio Setup
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+```bash
+npm install
+npm run dev
+```
 
-</div>
+Open `http://localhost:3000` and click **Start Camera** (or upload a video file).
+
+## Python OpenCV Desktop Setup
+
+```bash
+cd python
+pip install -r requirements.txt
+python setup_models.py --model yolov4-tiny
+python object_detector.py --mode all --camera 0 --confidence 0.50
+```

@@ -1,0 +1,14 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+logs/*.txt
+python/models/
+python/__pycache__/
+*.pyc
+snapshot_*.jpg
+

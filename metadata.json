@@ -1,0 +1,6 @@
+{
+  "name": "OpticTrack Vision Studio",
+  "description": "Real-time object detection studio using laptop camera feed, pre-trained COCO-SSD vision models, live FPS telemetry, timestamped local text logging, and Python OpenCV source code.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
