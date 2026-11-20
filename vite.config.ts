@@ -9,9 +9,9 @@ export default defineConfig(() => {
     plugins: [
       react(),
       tailwindcss(),
-      // Copies src/assets into dist/ so root-relative URLs like
-      // "/src/assets/images/..." (e.g. generate_image output) still resolve
-      // in production builds. Do not remove.
+      // Copies src/assets and MediaPipe WASM files into dist/ so root-relative
+      // URLs like "/src/assets/images/..." and "/mediapipe/wasm/..." resolve
+      // cleanly in static Vite deployments (e.g. Vercel).
       {
         name: 'copy-unbundled-src-assets',
         apply: 'build',
@@ -24,6 +24,15 @@ export default defineConfig(() => {
           const distAssets = path.resolve(distDir, 'src/assets');
           if (fs.existsSync(distDir) && fs.existsSync(srcAssets)) {
             fs.cpSync(srcAssets, distAssets, {recursive: true, force: true});
+          }
+
+          const mediapipeWasm = path.resolve(
+            __dirname,
+            'node_modules/@mediapipe/tasks-vision/wasm'
+          );
+          const distWasm = path.resolve(distDir, 'mediapipe/wasm');
+          if (fs.existsSync(distDir) && fs.existsSync(mediapipeWasm)) {
+            fs.cpSync(mediapipeWasm, distWasm, {recursive: true, force: true});
           }
         },
       },

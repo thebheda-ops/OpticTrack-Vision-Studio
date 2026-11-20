@@ -515,7 +515,7 @@ def main() -> None:
     if args.mode in ("all", "hands"):
         if mp is None:
             print(
-                "Error: mediapipe package is required for hand tracking. Run: pip install -r requirements.txt",
+                "Error: mediapipe package is required for hand tracking. Run: pip install -r requirements-desktop.txt",
                 file=sys.stderr,
             )
             sys.exit(1)

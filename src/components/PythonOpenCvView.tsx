@@ -9,7 +9,7 @@ interface PythonOpenCvViewProps {
 const PYTHON_FILES = [
   { key: 'object_detector.py', label: 'object_detector.py' },
   { key: 'setup_models.py', label: 'setup_models.py' },
-  { key: 'requirements.txt', label: 'requirements.txt' },
+  { key: 'requirements-desktop.txt', label: 'requirements-desktop.txt' },
   { key: 'README.md', label: 'README.md' },
 ] as const;
 
@@ -98,7 +98,7 @@ export const PythonOpenCvView: React.FC<PythonOpenCvViewProps> = ({ settings }) 
               1. Install OpenCV Dependencies
             </div>
             <code className="block text-xs font-mono text-slate-400">
-              pip install -r requirements.txt
+              pip install -r requirements-desktop.txt
             </code>
           </div>
           <div className="bg-[#090C10] border border-slate-800 rounded-md p-3">

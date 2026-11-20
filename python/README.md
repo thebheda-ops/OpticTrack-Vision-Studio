@@ -2,11 +2,11 @@
 
 Real-time laptop webcam **object detection**, **21-point hand movement tracking**, and **hand gesture recognition** using **OpenCV DNN** (`cv2.dnn`) and **MediaPipe Hands**, with live bounding boxes, hand skeleton trails, FPS telemetry, and timestamped local `.txt` logging.
 
-## Quick Start
+## Quick Start (Local Laptop Webcam)
 
 ```bash
 cd python
-pip install -r requirements.txt
+pip install -r requirements-desktop.txt
 python setup_models.py --model yolov4-tiny
 python object_detector.py --mode all --camera 0 --confidence 0.50
 ```
