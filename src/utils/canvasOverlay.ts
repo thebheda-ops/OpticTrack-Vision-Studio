@@ -9,14 +9,17 @@ const CLASS_PALETTE = [
   '#8B5CF6', // Violet
 ];
 
-// Standard 21-keypoint MediaPipe hand bone connections
-const HAND_BONE_CONNECTIONS: Array<[number, number]> = [
-  [0, 1], [1, 2], [2, 3], [3, 4],       // Thumb
-  [0, 5], [5, 6], [6, 7], [7, 8],       // Index
-  [0, 9], [9, 10], [10, 11], [11, 12],  // Middle
-  [0, 13], [13, 14], [14, 15], [15, 16],// Ring
-  [0, 17], [17, 18], [18, 19], [19, 20],// Pinky
-  [5, 9], [9, 13], [13, 17],            // Palm arch
+// Grouped by finger so we can color-code each finger's individual movement & flexion state
+const FINGER_BONE_CHAINS: Array<{
+  fingerIdx: number; // -1 for palm arch, 0..4 for Thumb..Pinky
+  segments: Array<[number, number]>;
+}> = [
+  { fingerIdx: -1, segments: [[5, 9], [9, 13], [13, 17], [0, 5], [0, 17]] },
+  { fingerIdx: 0, segments: [[0, 1], [1, 2], [2, 3], [3, 4]] },
+  { fingerIdx: 1, segments: [[5, 6], [6, 7], [7, 8]] },
+  { fingerIdx: 2, segments: [[9, 10], [10, 11], [11, 12]] },
+  { fingerIdx: 3, segments: [[13, 14], [14, 15], [15, 16]] },
+  { fingerIdx: 4, segments: [[17, 18], [18, 19], [19, 20]] },
 ];
 
 export function getColorForLabel(label: string): string {
@@ -31,7 +34,7 @@ export interface OverlayRenderOptions {
   mirrorX: boolean;
   showFpsHud: boolean;
   showHandSkeleton: boolean;
-  showHandTrails: boolean;
+  showOrientationDial: boolean;
   fps: number;
   inferenceMs: number;
   loggingEnabled: boolean;
@@ -95,65 +98,109 @@ export function renderDetectionOverlay(
     ctx.fillText(labelText, tagX + padX, tagY + 4 * scaleFactor);
   }
 
-  // 2. Render tracked hands, 21-point skeleton, motion trajectory trails, & gesture labels
+  // 2. Render 360-degree articulated 21-point hand skeleton & individual finger states
+  //    (No blue gesture tracking trail line)
   for (const hand of hands) {
     const toScreenX = (rawPxX: number) =>
       options.mirrorX ? width - rawPxX : rawPxX;
 
-    // Motion trajectory trail
-    if (options.showHandTrails && hand.trail.length >= 2) {
-      const total = hand.trail.length;
-      for (let i = 1; i < total; i += 1) {
-        const p0 = hand.trail[i - 1];
-        const p1 = hand.trail[i];
-        const progress = i / total;
-        ctx.strokeStyle = hand.swipeGesture
-          ? `rgba(245, 158, 11, ${(0.2 + progress * 0.75).toFixed(2)})`
-          : `rgba(6, 182, 212, ${(0.15 + progress * 0.75).toFixed(2)})`;
-        ctx.lineWidth = Math.max(1.5, progress * 5 * scaleFactor);
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(toScreenX(p0.x), p0.y);
-        ctx.lineTo(toScreenX(p1.x), p1.y);
-        ctx.stroke();
-      }
+    // Optional subtle 360° orientation dial centered on the wrist/palm
+    if (options.showOrientationDial && hand.landmarks.length === 21) {
+      const palmScreenX = toScreenX(hand.palmCenter.x);
+      const palmScreenY = hand.palmCenter.y;
+      const radius = 22 * scaleFactor;
+      const angleRad = ((hand.orientation.rollDeg - 90) * Math.PI) / 180;
+
+      ctx.strokeStyle = 'rgba(16, 185, 129, 0.45)';
+      ctx.lineWidth = 1.5 * scaleFactor;
+      ctx.beginPath();
+      ctx.arc(palmScreenX, palmScreenY, radius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Orientation pointer tick showing 360° hand axis
+      ctx.strokeStyle = '#10B981';
+      ctx.lineWidth = 2.2 * scaleFactor;
+      ctx.beginPath();
+      ctx.moveTo(
+        palmScreenX + Math.cos(angleRad) * (radius - 5 * scaleFactor),
+        palmScreenY + Math.sin(angleRad) * (radius - 5 * scaleFactor)
+      );
+      ctx.lineTo(
+        palmScreenX + Math.cos(angleRad) * (radius + 7 * scaleFactor),
+        palmScreenY + Math.sin(angleRad) * (radius + 7 * scaleFactor)
+      );
+      ctx.stroke();
     }
 
-    // 21-landmark skeleton
+    // Articulated per-finger 21-point skeleton
     if (options.showHandSkeleton && hand.landmarks.length === 21) {
-      ctx.strokeStyle = '#10B981';
-      ctx.lineWidth = Math.max(1.5, 2 * scaleFactor);
-      for (const [a, b] of HAND_BONE_CONNECTIONS) {
-        const la = hand.landmarks[a];
-        const lb = hand.landmarks[b];
-        const ax = toScreenX(la.x * width);
-        const ay = la.y * height;
-        const bx = toScreenX(lb.x * width);
-        const by = lb.y * height;
-        ctx.beginPath();
-        ctx.moveTo(ax, ay);
-        ctx.lineTo(bx, by);
-        ctx.stroke();
+      for (const chain of FINGER_BONE_CHAINS) {
+        if (chain.fingerIdx === -1) {
+          ctx.strokeStyle = 'rgba(16, 185, 129, 0.72)';
+          ctx.lineWidth = 1.6 * scaleFactor;
+        } else {
+          const finger = hand.fingers[chain.fingerIdx];
+          if (finger?.isMoving) {
+            ctx.strokeStyle = '#F59E0B'; // Active individual finger movement
+            ctx.lineWidth = 2.6 * scaleFactor;
+          } else if (finger?.state === 'Extended') {
+            ctx.strokeStyle = '#10B981'; // Extended finger
+            ctx.lineWidth = 2.1 * scaleFactor;
+          } else {
+            ctx.strokeStyle = '#64748B'; // Curled / half-bent finger
+            ctx.lineWidth = 1.8 * scaleFactor;
+          }
+        }
+
+        for (const [a, b] of chain.segments) {
+          const la = hand.landmarks[a];
+          const lb = hand.landmarks[b];
+          ctx.beginPath();
+          ctx.moveTo(toScreenX(la.x * width), la.y * height);
+          ctx.lineTo(toScreenX(lb.x * width), lb.y * height);
+          ctx.stroke();
+        }
       }
 
+      // Draw all 21 joints without blue/cyan blobs
       hand.landmarks.forEach((lm, idx) => {
         const lx = toScreenX(lm.x * width);
         const ly = lm.y * height;
-        const isFingertip = idx === 4 || idx === 8 || idx === 12 || idx === 16 || idx === 20;
-        ctx.fillStyle = isFingertip ? '#F59E0B' : '#06B6D4';
-        ctx.beginPath();
-        ctx.arc(
-          lx,
-          ly,
-          (isFingertip ? 4.5 : 3) * scaleFactor,
-          0,
-          Math.PI * 2
-        );
-        ctx.fill();
+
+        const fingerIdx =
+          idx >= 1 && idx <= 4
+            ? 0
+            : idx >= 5 && idx <= 8
+              ? 1
+              : idx >= 9 && idx <= 12
+                ? 2
+                : idx >= 13 && idx <= 16
+                  ? 3
+                  : idx >= 17 && idx <= 20
+                    ? 4
+                    : -1;
+        const isTip = idx === 4 || idx === 8 || idx === 12 || idx === 16 || idx === 20;
+        const fingerState = fingerIdx >= 0 ? hand.fingers[fingerIdx] : undefined;
+
+        if (isTip && fingerState) {
+          ctx.fillStyle = fingerState.isMoving
+            ? '#F59E0B'
+            : fingerState.state === 'Extended'
+              ? '#10B981'
+              : '#94A3B8';
+          ctx.beginPath();
+          ctx.arc(lx, ly, (fingerState.isMoving ? 5 : 4) * scaleFactor, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillStyle = '#E2E8F0';
+          ctx.beginPath();
+          ctx.arc(lx, ly, 2.6 * scaleFactor, 0, Math.PI * 2);
+          ctx.fill();
+        }
       });
     }
 
-    // Hand bounding box + gesture & movement label
+    // Hand bounding box + 360-degree orientation & gesture label
     const [rawBx, by, bw, bh] = hand.bbox;
     const bx = options.mirrorX ? width - (rawBx + bw) : rawBx;
     const handColor = hand.swipeGesture ? '#F59E0B' : '#10B981';
@@ -165,11 +212,7 @@ export function renderDetectionOverlay(
     ctx.setLineDash([]);
 
     const activeGesture = hand.swipeGesture ?? hand.gesture;
-    const speedLabel =
-      hand.speedPxPerSec >= 75
-        ? ` · ${hand.direction} (${Math.round(hand.speedPxPerSec)} px/s)`
-        : '';
-    const handLabel = `${hand.handedness} Hand: ${activeGesture} ${(hand.gestureConfidence * 100).toFixed(0)}%${speedLabel}`;
+    const handLabel = `${hand.handedness} · ${activeGesture} · ${hand.orientation.rollDeg}° · ${hand.orientation.facing}`;
 
     ctx.font = `600 ${fontSize}px "JetBrains Mono", monospace`;
     const metrics = ctx.measureText(handLabel);

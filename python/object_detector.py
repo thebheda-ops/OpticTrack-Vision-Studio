@@ -251,49 +251,115 @@ class AsyncObjectWorker:
                 self._latest_detections = res
 
 
-def classify_hand_gesture(landmarks, handedness_label: str) -> Tuple[str, int]:
-    pts = [(lm.x, lm.y) for lm in landmarks]
+FINGER_SPECS = [
+    ("Thumb", (1, 2, 3, 4)),
+    ("Index", (5, 6, 7, 8)),
+    ("Middle", (9, 10, 11, 12)),
+    ("Ring", (13, 14, 15, 16)),
+    ("Pinky", (17, 18, 19, 20)),
+]
 
-    def dist(a: int, b: int) -> float:
-        return math.hypot(pts[a][0] - pts[b][0], pts[a][1] - pts[b][1])
 
-    palm_width = max(1e-4, dist(5, 17))
-    pinch_ratio = dist(4, 8) / palm_width
+def _sub3(a, b):
+    return (a[0] - b[0], a[1] - b[1], a[2] - b[2])
 
-    if handedness_label == "Right":
-        thumb_open = pts[4][0] < pts[3][0] - 0.02
+
+def _dot3(a, b) -> float:
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+
+
+def _len3(a) -> float:
+    return math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2])
+
+
+def _cross3(a, b):
+    return (
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+    )
+
+
+def _angle_deg(v1, v2) -> float:
+    m1, m2 = _len3(v1), _len3(v2)
+    if m1 < 1e-6 or m2 < 1e-6:
+        return 0.0
+    cos_v = max(-1.0, min(1.0, _dot3(v1, v2) / (m1 * m2)))
+    return math.degrees(math.acos(cos_v))
+
+
+def _dist3(a, b) -> float:
+    return _len3(_sub3(a, b))
+
+
+def analyze_fingers_360(landmarks, handedness_label: str) -> Tuple[List[dict], int, str]:
+    """Compute 360-degree orientation-invariant extension % and bend angles for all 5 fingers."""
+    pts = [(lm.x, lm.y, lm.z) for lm in landmarks]
+    wrist = pts[0]
+    palm_size = max(1e-4, _dist3(pts[0], pts[9]))
+    palm_width = max(1e-4, _dist3(pts[5], pts[17]))
+
+    fingers_info: List[dict] = []
+    for name, (j0, j1, j2, j3) in FINGER_SPECS:
+        v1 = _sub3(pts[j1], pts[j0])
+        v2 = _sub3(pts[j2], pts[j1])
+        v3 = _sub3(pts[j3], pts[j2])
+        b1 = _angle_deg(v1, v2)
+        b2 = _angle_deg(v2, v3)
+
+        if name == "Thumb":
+            bend = (b1 + b2) * 0.5
+            reach = max(_dist3(pts[j3], pts[17]), _dist3(pts[j3], pts[5]) * 1.1) / palm_size
+            ang_score = max(0.0, min(1.0, 1.0 - (bend - 10.0) / 75.0))
+            reach_score = max(0.0, min(1.0, (reach - 0.55) / 0.75))
+            ext_pct = int(round((ang_score * 0.55 + reach_score * 0.45) * 100))
+        else:
+            bend = b1 * 0.65 + b2 * 0.35
+            ang_score = max(0.0, min(1.0, 1.0 - (bend - 14.0) / 92.0))
+            radial = _dist3(pts[j3], wrist) / max(1e-4, _dist3(pts[j1], wrist))
+            rad_score = max(0.0, min(1.0, (radial - 0.95) / 0.8))
+            ext_pct = int(round((ang_score * 0.6 + rad_score * 0.4) * 100))
+
+        fingers_info.append(
+            {"name": name, "joints": (j0, j1, j2, j3), "ext_pct": ext_pct, "bend_deg": int(round(bend))}
+        )
+
+    ext = [f["ext_pct"] >= 58 for f in fingers_info]
+    finger_count = sum(ext)
+    pinch_ratio = _dist3(pts[4], pts[8]) / palm_width
+
+    if pinch_ratio < 0.36 and (ext[2] or ext[3]):
+        gesture = "Pinch"
+    elif all(ext):
+        gesture = "Open_Palm"
+    elif not any(ext[1:]):
+        if ext[0]:
+            dy = pts[4][1] - pts[2][1]
+            dx = pts[4][0] - pts[2][0]
+            if abs(dy) >= abs(dx):
+                gesture = "Thumb_Up" if dy < 0 else "Thumb_Down"
+            else:
+                gesture = "Thumb_Out"
+        else:
+            gesture = "Closed_Fist"
+    elif ext[1] and ext[2] and not ext[3] and not ext[4]:
+        gesture = "Victory"
+    elif ext[1] and not ext[2] and not ext[3] and not ext[4] and not ext[0]:
+        gesture = "Pointing"
+    elif ext[0] and ext[1] and not ext[2] and not ext[3] and ext[4]:
+        gesture = "ILoveYou"
+    elif not ext[0] and ext[1] and not ext[2] and not ext[3] and ext[4]:
+        gesture = "Rock_Horns"
+    elif ext[0] and not ext[1] and not ext[2] and not ext[3] and ext[4]:
+        gesture = "Call_Me"
+    elif finger_count == 3:
+        gesture = "Three_Fingers"
+    elif finger_count == 4:
+        gesture = "Four_Fingers"
     else:
-        thumb_open = pts[4][0] > pts[3][0] + 0.02
+        gesture = "Articulated"
 
-    index_open = pts[8][1] < pts[6][1] - 0.02
-    middle_open = pts[12][1] < pts[10][1] - 0.02
-    ring_open = pts[16][1] < pts[14][1] - 0.02
-    pinky_open = pts[20][1] < pts[18][1] - 0.02
-
-    finger_count = sum([thumb_open, index_open, middle_open, ring_open, pinky_open])
-
-    if pinch_ratio < 0.34 and (middle_open or ring_open):
-        return "Pinch", finger_count
-    if index_open and middle_open and ring_open and pinky_open and thumb_open:
-        return "Open_Palm", finger_count
-    if not index_open and not middle_open and not ring_open and not pinky_open:
-        if dist(4, 2) > palm_width * 0.45:
-            if pts[4][1] < pts[2][1] - 0.04:
-                return "Thumb_Up", finger_count
-            if pts[4][1] > pts[2][1] + 0.04:
-                return "Thumb_Down", finger_count
-        return "Closed_Fist", finger_count
-    if index_open and middle_open and not ring_open and not pinky_open:
-        return "Victory", finger_count
-    if index_open and not middle_open and not ring_open and not pinky_open:
-        return "Pointing_Up", finger_count
-    if thumb_open and index_open and not middle_open and not ring_open and pinky_open:
-        return "ILoveYou", finger_count
-    if finger_count == 3:
-        return "Three_Fingers", finger_count
-    if finger_count == 4:
-        return "Four_Fingers", finger_count
-    return "Tracked_Hand", finger_count
+    return fingers_info, finger_count, gesture
 
 
 def analyze_hand_movement(
@@ -371,32 +437,33 @@ def draw_hud_and_detections(
         )
 
     for hand in hand_results:
-        trail: List[Tuple[float, float]] = hand["trail"]
-        if len(trail) >= 2:
-            for i in range(1, len(trail)):
-                p1 = (int(trail[i - 1][0]), int(trail[i - 1][1]))
-                p2 = (int(trail[i][0]), int(trail[i][1]))
-                thickness = max(1, int(1 + (i / len(trail)) * 4))
-                cv2.line(annotated, p1, p2, (212, 182, 6), thickness, cv2.LINE_AA)
-
         pts_px = hand["points_px"]
         for c_start, c_end in hand["connections"]:
             cv2.line(annotated, pts_px[c_start], pts_px[c_end], (129, 185, 16), 2, cv2.LINE_AA)
-        for px, py in pts_px:
-            cv2.circle(annotated, (px, py), 4, (212, 182, 6), -1, cv2.LINE_AA)
+
+        # Highlight tips based on extension/movement without any blue tracking trail line
+        tip_set = {4, 8, 12, 16, 20}
+        for idx, (px, py) in enumerate(pts_px):
+            if idx in tip_set:
+                f_idx = [4, 8, 12, 16, 20].index(idx)
+                f_data = hand["fingers"][f_idx]
+                dot_col = (11, 158, 245) if f_data.get("moving") else (129, 185, 16)
+                cv2.circle(annotated, (px, py), 5, dot_col, -1, cv2.LINE_AA)
+            else:
+                cv2.circle(annotated, (px, py), 3, (226, 232, 240), -1, cv2.LINE_AA)
 
         hx, hy, hw, hh = hand["bbox"]
-        cv2.rectangle(annotated, (hx, hy), (hx + hw, hy + hh), (11, 158, 245), 2)
+        cv2.rectangle(annotated, (hx, hy), (hx + hw, hy + hh), (129, 185, 16), 2)
 
         gesture_str = hand["swipe"] or hand["gesture"]
-        label_str = f"{hand['handedness']} | {gesture_str} | {hand['direction']} ({hand['speed']:.0f} px/s)"
+        label_str = f"{hand['handedness']} | {gesture_str} | {hand['roll_deg']}deg | {hand['facing']}"
         (tw, th), _ = cv2.getTextSize(label_str, cv2.FONT_HERSHEY_SIMPLEX, 0.50, 2)
         tag_y = max(th + 10, hy)
         cv2.rectangle(
             annotated,
             (hx, tag_y - th - 10),
             (hx + tw + 12, tag_y),
-            (11, 158, 245),
+            (129, 185, 16),
             cv2.FILLED,
         )
         cv2.putText(
@@ -620,9 +687,32 @@ def main() -> None:
                             ):
                                 hand_trails[trail_key].popleft()
 
-                            gesture, finger_count = classify_hand_gesture(
+                            fingers_info, finger_count, gesture = analyze_fingers_360(
                                 hand_lms.landmark, handedness_label
                             )
+                            # 360-degree roll angle & 3D palm facing
+                            dx_roll = hand_lms.landmark[9].x - hand_lms.landmark[0].x
+                            dy_roll = hand_lms.landmark[9].y - hand_lms.landmark[0].y
+                            roll_deg = int(round(math.degrees(math.atan2(dx_roll, -dy_roll)) % 360))
+                            v_idx = _sub3(
+                                (hand_lms.landmark[5].x, hand_lms.landmark[5].y, hand_lms.landmark[5].z),
+                                (hand_lms.landmark[0].x, hand_lms.landmark[0].y, hand_lms.landmark[0].z),
+                            )
+                            v_pnk = _sub3(
+                                (hand_lms.landmark[17].x, hand_lms.landmark[17].y, hand_lms.landmark[17].z),
+                                (hand_lms.landmark[0].x, hand_lms.landmark[0].y, hand_lms.landmark[0].z),
+                            )
+                            nrm = _cross3(v_idx, v_pnk)
+                            nz = nrm[2] / max(1e-6, _len3(nrm))
+                            signed_nz = nz if handedness_label == "Right" else -nz
+                            facing = (
+                                "Back"
+                                if signed_nz > 0.32
+                                else "Front"
+                                if signed_nz < -0.32
+                                else "Side"
+                            )
+
                             direction, speed, swipe = analyze_hand_movement(
                                 hand_trails[trail_key], now_t
                             )
@@ -633,13 +723,15 @@ def main() -> None:
                                     "score": handedness_score,
                                     "gesture": gesture,
                                     "finger_count": finger_count,
+                                    "fingers": fingers_info,
+                                    "roll_deg": roll_deg,
+                                    "facing": facing,
                                     "direction": direction,
                                     "speed": speed,
                                     "swipe": swipe,
                                     "bbox": h_bbox,
                                     "points_px": pts_px,
                                     "connections": hand_connections,
-                                    "trail": [(p[0], p[1]) for p in hand_trails[trail_key]],
                                 }
                             )
 

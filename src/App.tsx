@@ -21,7 +21,6 @@ import {
   DetectedObject,
   DetectionMode,
   DetectorSettings,
-  HandTrailPoint,
   LogEntry,
   LogEntryType,
   PerformanceSample,
@@ -30,7 +29,7 @@ import {
   WorkspaceTab,
 } from './types/detection';
 import { getColorForLabel, renderDetectionOverlay } from './utils/canvasOverlay';
-import { extractTrackedHands } from './utils/handAnalysis';
+import { extractTrackedHands, HandHistorySample } from './utils/handAnalysis';
 
 type ModelLoadState = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -57,7 +56,7 @@ const DEFAULT_SETTINGS: DetectorSettings = {
   loggingEnabled: true,
   showFpsOnCanvas: true,
   showHandSkeleton: true,
-  showHandTrails: true,
+  showOrientationDial: true,
   mirrorCamera: true,
   pythonModel: 'yolov4-tiny',
 };
@@ -113,7 +112,7 @@ export default function App() {
   const latestObjectsRef = useRef<DetectedObject[]>([]);
   const lastVideoTimeRef = useRef<number>(-1);
   const lastHandVideoTsRef = useRef<number>(0);
-  const handTrailsRef = useRef<Map<string, HandTrailPoint[]>>(new Map());
+  const handHistoryRef = useRef<Map<string, HandHistorySample[]>>(new Map());
   const settingsRef = useRef(settings);
   const sourceModeRef = useRef(sourceMode);
   const isStreamingRef = useRef(isStreaming);
@@ -331,8 +330,16 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    loadObjectModel(settings.modelBase);
+    let cancelled = false;
+    (async () => {
+      await loadObjectModel(settings.modelBase);
+      if (cancelled && objectModelRef.current) {
+        objectModelRef.current.dispose();
+        objectModelRef.current = null;
+      }
+    })();
     return () => {
+      cancelled = true;
       if (objectModelRef.current) {
         objectModelRef.current.dispose();
         objectModelRef.current = null;
@@ -341,8 +348,16 @@ export default function App() {
   }, [settings.modelBase, loadObjectModel]);
 
   useEffect(() => {
-    loadHandRecognizer(settings.maxHands);
+    let cancelled = false;
+    (async () => {
+      await loadHandRecognizer(settings.maxHands);
+      if (cancelled && handRecognizerRef.current) {
+        handRecognizerRef.current.close();
+        handRecognizerRef.current = null;
+      }
+    })();
     return () => {
+      cancelled = true;
       if (handRecognizerRef.current) {
         handRecognizerRef.current.close();
         handRecognizerRef.current = null;
@@ -403,7 +418,7 @@ export default function App() {
 
     flushLogBuffer();
     frameTimestampsRef.current = [];
-    handTrailsRef.current.clear();
+    handHistoryRef.current.clear();
     latestObjectsRef.current = [];
     lastVideoTimeRef.current = -1;
     isObjectInferringRef.current = false;
@@ -572,12 +587,12 @@ export default function App() {
             handRes,
             video.videoWidth,
             video.videoHeight,
-            handTrailsRef.current,
+            handHistoryRef.current,
             t0,
             mirrorX
           );
         } else {
-          handTrailsRef.current.clear();
+          handHistoryRef.current.clear();
         }
 
         const t1 = performance.now();
@@ -609,7 +624,7 @@ export default function App() {
               mirrorX,
               showFpsHud: currentSettings.showFpsOnCanvas,
               showHandSkeleton: currentSettings.showHandSkeleton,
-              showHandTrails: currentSettings.showHandTrails,
+              showOrientationDial: currentSettings.showOrientationDial,
               fps: currentFps,
               inferenceMs: currentInferMs,
               loggingEnabled: currentSettings.loggingEnabled,
@@ -1282,14 +1297,14 @@ export default function App() {
                     />
                   </label>
                   <label className="flex items-center justify-between text-xs text-slate-300 cursor-pointer">
-                    <span>Hand Movement Trails</span>
+                    <span>360° Orientation Dial</span>
                     <input
                       type="checkbox"
-                      checked={settings.showHandTrails}
+                      checked={settings.showOrientationDial}
                       onChange={(e) =>
                         setSettings((prev) => ({
                           ...prev,
-                          showHandTrails: e.target.checked,
+                          showOrientationDial: e.target.checked,
                         }))
                       }
                       className="accent-cyan-400 w-4 h-4 rounded cursor-pointer"
@@ -1620,43 +1635,94 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Real-Time Hand Movement & Gesture Telemetry Row */}
-                  <div className="pt-2 border-t border-slate-800/70 flex flex-wrap items-center gap-3 text-slate-300">
-                    <span className="inline-flex items-center gap-1.5 text-slate-500">
-                      <Hand className="w-3.5 h-3.5 text-emerald-400" />
-                      Hand Gestures & Motion:
-                    </span>
-                    {trackedHands.length === 0 ? (
-                      <span className="text-slate-500">
-                        {isStreaming
-                          ? settings.detectionMode === 'objects'
-                            ? 'Disabled in Objects Only mode'
-                            : 'Show hand to camera (Open Palm, Fist, Victory, Thumbs Up, Pinch, or Swipe)'
-                          : 'Waiting for stream'}
+                  {/* Real-Time 360° Hand & Per-Finger Articulation Telemetry */}
+                  <div className="pt-2 border-t border-slate-800/70 space-y-2 text-slate-300">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="inline-flex items-center gap-1.5 text-slate-500">
+                        <Hand className="w-3.5 h-3.5 text-emerald-400" />
+                        360° Hand & Finger Tracking:
                       </span>
-                    ) : (
-                      trackedHands.map((hand, idx) => (
-                        <React.Fragment key={hand.id}>
-                          {idx > 0 && (
-                            <span className="text-slate-600" aria-hidden="true">
-                              ·
+                      {trackedHands.length === 0 ? (
+                        <span className="text-slate-500">
+                          {isStreaming
+                            ? settings.detectionMode === 'objects'
+                              ? 'Disabled in Objects Only mode'
+                              : 'Show hand at any angle (360° rotation, palm front/back, individual finger curls)'
+                            : 'Waiting for stream'}
+                        </span>
+                      ) : (
+                        trackedHands.map((hand, idx) => (
+                          <React.Fragment key={hand.id}>
+                            {idx > 0 && (
+                              <span className="text-slate-600" aria-hidden="true">
+                                ·
+                              </span>
+                            )}
+                            <span className="inline-flex flex-wrap items-center gap-2 font-mono tabular-nums">
+                              <span className="font-sans font-medium text-emerald-400">
+                                {hand.handedness}
+                              </span>
+                              <span className="text-slate-100 font-sans font-semibold">
+                                {hand.swipeGesture ?? hand.gesture}
+                              </span>
+                              <span className="text-slate-400">
+                                ({hand.orientation.rollDeg}° · {hand.orientation.facing}
+                                {hand.orientation.rotationDirection !== 'Steady'
+                                  ? ` · ${hand.orientation.rotationDirection}`
+                                  : ''}{' '}
+                                · {hand.direction} {Math.round(hand.speedPxPerSec)} px/s)
+                              </span>
                             </span>
-                          )}
-                          <span className="inline-flex items-center gap-2 font-mono tabular-nums">
-                            <span className="font-sans font-medium text-emerald-400">
-                              {hand.handedness}
+                          </React.Fragment>
+                        ))
+                      )}
+                    </div>
+
+                    {trackedHands.length > 0 && (
+                      <div className="space-y-1.5">
+                        {trackedHands.map((hand) => (
+                          <div
+                            key={`${hand.id}-fingers`}
+                            className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-mono tabular-nums text-slate-400"
+                          >
+                            <span className="font-sans text-slate-500">
+                              {hand.handedness} Fingers:
                             </span>
-                            <span className="text-slate-100 font-sans font-semibold">
-                              {hand.swipeGesture ?? hand.gesture}
-                            </span>
-                            <span className="text-slate-400">
-                              ({(hand.gestureConfidence * 100).toFixed(0)}% ·{' '}
-                              {hand.fingerCount}/5 fingers · {hand.direction} ·{' '}
-                              {Math.round(hand.speedPxPerSec)} px/s)
-                            </span>
-                          </span>
-                        </React.Fragment>
-                      ))
+                            {hand.fingers.map((finger, fIdx) => (
+                              <React.Fragment key={finger.name}>
+                                {fIdx > 0 && (
+                                  <span className="text-slate-700" aria-hidden="true">
+                                    ·
+                                  </span>
+                                )}
+                                <span className="inline-flex items-center gap-1.5">
+                                  <span
+                                    className={
+                                      finger.isMoving
+                                        ? 'text-amber-400 font-semibold'
+                                        : finger.state === 'Extended'
+                                          ? 'text-emerald-400'
+                                          : 'text-slate-400'
+                                    }
+                                  >
+                                    {finger.name}
+                                  </span>
+                                  <span className="text-slate-300">
+                                    {finger.extensionPct}%
+                                  </span>
+                                  <span className="text-slate-500">
+                                    ({finger.bendAngleDeg}°
+                                    {finger.isMoving
+                                      ? ` · ${Math.round(finger.speedPxPerSec)} px/s`
+                                      : ''}
+                                    )
+                                  </span>
+                                </span>
+                              </React.Fragment>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
                 </div>

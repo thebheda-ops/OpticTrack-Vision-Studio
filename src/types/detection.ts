@@ -11,10 +11,23 @@ export interface HandLandmarkPoint {
   z: number;
 }
 
-export interface HandTrailPoint {
-  x: number; // pixel x in raw video coords
-  y: number; // pixel y in raw video coords
-  t: number; // performance.now() timestamp in ms
+export type FingerName = 'Thumb' | 'Index' | 'Middle' | 'Ring' | 'Pinky';
+
+export interface FingerTrackingState {
+  name: FingerName;
+  tipIndex: number;
+  extensionPct: number; // 0 (curled) to 100 (fully extended)
+  bendAngleDeg: number; // 0 (straight) to ~170 (tightly curled)
+  state: 'Extended' | 'Half-Bent' | 'Curled';
+  speedPxPerSec: number;
+  isMoving: boolean;
+}
+
+export interface HandOrientation {
+  rollDeg: number; // 0..360 deg in camera plane (0 = pointing up, 90 = right, 180 = down, 270 = left)
+  facing: 'Palm Front' | 'Back of Hand' | 'Side Profile';
+  rotationDirection: 'Clockwise' | 'Counter-Clockwise' | 'Steady';
+  angularVelocityDegPerSec: number;
 }
 
 export interface TrackedHand {
@@ -24,13 +37,14 @@ export interface TrackedHand {
   gesture: string;
   gestureConfidence: number;
   fingerCount: number;
+  fingers: FingerTrackingState[];
+  orientation: HandOrientation;
   direction: string;
   speedPxPerSec: number;
   swipeGesture: string | null;
   bbox: [number, number, number, number];
   landmarks: HandLandmarkPoint[];
   palmCenter: { x: number; y: number };
-  trail: HandTrailPoint[];
 }
 
 export type LogEntryType = 'object' | 'hand_gesture' | 'hand_motion';
@@ -71,7 +85,7 @@ export interface DetectorSettings {
   loggingEnabled: boolean;
   showFpsOnCanvas: boolean;
   showHandSkeleton: boolean;
-  showHandTrails: boolean;
+  showOrientationDial: boolean;
   mirrorCamera: boolean;
   pythonModel: PythonModelPreset;
 }
